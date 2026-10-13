@@ -13,13 +13,3 @@ Static site for [PatchEval](https://huggingface.co/datasets/DogukanUrker/PatchEv
 3. Check the printed scores, then deploy.
 
 Several run folders in one entry are merged task by task, so a resumed or split run counts once. Only outcomes and counts go into `data.js`. Prompts, responses and traces never do.
-
-## Deploy on Vercel
-
-Import the repo in Vercel with framework preset **Other**, no build command, output directory `.`. Or from this folder:
-
-```console
-npx vercel --prod
-```
-
-For `patcheval.dogukanurker.com`, add the domain in the Vercel project's settings, then add the DNS record it asks for (normally a `CNAME` from `patcheval` to `cname.vercel-dns.com`).

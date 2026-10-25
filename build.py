@@ -20,6 +20,9 @@ RELEASE = "pilot-20"
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
 ENTRIES = [
+    dict(name="Raon-1-mini", quant="IQ4_XS (preview)", where="local", gb=16.1, color="rose",
+         runs=["2026-10-25_15-43-15", "2026-10-25_23-46-52"],
+         note="KRAFTON Raon-1 mini preview (30B-A4B) on KRAFTON's llama.cpp fork. run split in two: tasks 1-6, then a slice for 7-20."),
     dict(name="Flint-40B-A2.5B", quant="UD-Q3_K_XL (preview)", where="local", gb=18.49, color="amber",
          runs=["2026-10-23_12-31-16"], note="Recursive Flint, coding-agent MoE. llama.cpp PR #30928 runtime."),
     dict(name="Spark-X2.6-4B", quant="Q8_0", where="local", gb=4.38, color="olive",

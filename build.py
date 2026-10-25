@@ -20,6 +20,17 @@ RELEASE = "pilot-20"
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
 ENTRIES = [
+    dict(name="Flint-40B-A2.5B", quant="UD-Q3_K_XL (preview)", where="local", gb=18.49, color="red",
+         runs=["2026-10-23_12-31-16"], note="Recursive Flint, coding-agent MoE. llama.cpp PR #30928 runtime."),
+    dict(name="Spark-X2.6-4B", quant="Q8_0", where="local", gb=4.38, color="olive",
+         runs=["2026-10-24_07-59-05"]),
+    dict(name="Nemotron-3.5-Bolt-74B-A9B", quant="UD-IQ1_S", where="local", gb=18.51, color="mint",
+         runs=["2026-10-21_06-36-25"]),
+    dict(name="LFM2.5-24B-A2B", quant="QAD-Q4_0", where="local", gb=13.58, color="sienna",
+         runs=["2026-10-14_09-31-35"]),
+    dict(name="Bonsai-2-9B", quant="Ternary PQ2_0", where="local", gb=2.42, color="plum",
+         runs=["2026-10-17_13-21-58", "2026-10-17_14-56-59"],
+         note="first run hit 3 harness errors (sandbox disk full); sqlit-246 was re-run and merged, 2 tasks stay unscored."),
     dict(name="Qwen3.8-Flash", quant="official Qwen API", where="api", gb=None, color="charcoal",
          runs=["2026-08-27_06-01-39"]),
     dict(name="Qwen3.8-27B", quant="GSQ-RCO IQ2_XS", where="local", gb=8.42, color="purple",

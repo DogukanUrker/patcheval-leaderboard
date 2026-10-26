@@ -352,7 +352,7 @@ function detail(m) {
     m.errors ? ["Harness errors", `${m.errors} (not scored)`] : null,
     ["Where", m.where === "api" ? "official API" : "local, RTX 3060 12 GB"],
     m.gb ? ["File size", `${m.gb} GB`] : null,
-    m.tok_s ? ["Speed", `${m.tok_s} tok/s`] : null,
+    m.tok_s ? ["Speed", m.where === "api" ? `${m.tok_s} tok/s (api stream, measured over the network)` : `${m.tok_s} tok/s`] : null,
     ["Tool calls", m.tool_calls.toLocaleString()],
     ["Wall time", `${m.hours} h`],
     ["Harness", m.harness],

@@ -115,7 +115,7 @@ def build(entry):
         "gb": entry["gb"], "color": entry["color"], "note": entry.get("note", ""),
         "scored": scored, "passed": passed, "first": first, "loops": loops,
         "errors": len(outs) - scored,
-        "tok_s": round(main.get("tok_s") or 0, 1) if entry["where"] == "local" else None,
+        "tok_s": round(main.get("tok_s") or 0, 1) or None,
         "hours": round(sum(m.get("total_time") or 0 for m in meta) / 3600, 1),
         "tool_calls": sum(t["calls"] for t in tasks.values()),
         "date": entry["runs"][-1][:10],

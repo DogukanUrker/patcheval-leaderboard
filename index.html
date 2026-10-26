@@ -248,11 +248,13 @@
     <p class="lede">PatchEval runs through BenchKit. It builds every task's runtime locally and cleans up afterwards. Why only 20 tasks? Running SWE-bench locally is way too expensive for one GPU.</p>
     <div class="run">
       <button class="copy" id="copy">Copy</button>
-<pre id="cmd"><span class="c"># get the frozen release, then point BenchKit at it</span>
-git clone https://huggingface.co/datasets/DogukanUrker/PatchEval
-export BENCHKIT_PATCHEVAL_DATASET=$PWD/PatchEval
+<pre id="cmd"><span class="c"># get BenchKit</span>
+git clone https://github.com/DogukanUrker/BenchKit && cd BenchKit
 
-<span class="c"># from a BenchKit checkout</span>
+<span class="c"># download the frozen PatchEval release</span>
+uv run benchkit datasets install patcheval
+
+<span class="c"># run it</span>
 uv run benchkit --headless --models MODEL --benchmarks patcheval \
   --harness pi --repair-attempts 1</pre>
     </div>

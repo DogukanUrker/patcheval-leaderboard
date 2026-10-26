@@ -33,7 +33,8 @@ ENTRIES = [
          runs=["2026-10-14_09-31-35"]),
     dict(name="Bonsai-2-9B", quant="Ternary PQ2_0", where="local", gb=2.42, color="plum",
          runs=["2026-10-17_13-21-58", "2026-10-17_14-56-59"],
-         note="first run hit 3 harness errors (sandbox disk full); sqlit-246 was re-run and merged, 2 tasks stay unscored."),
+         overrides={"structlog-710": "fail", "pygments-2816": "timeout"},
+         note="sqlit-246 hit a real harness error (docker disk full) and was re-run and merged. structlog-710 and pygments-2816 were logged as harness errors, but the model deleted or broke the repo itself, so they count as failures."),
     dict(name="Qwen3.8-Flash", quant="official Qwen API", where="api", gb=None, color="charcoal",
          runs=["2026-08-27_06-01-39"]),
     dict(name="Qwen3.8-27B", quant="GSQ-RCO IQ2_XS", where="local", gb=8.42, color="purple",
@@ -104,6 +105,8 @@ def build(entry):
                     "turns": t.get("model_turns") or 0,
                     "secs": round(t.get("response_time_s") or 0),
                 }
+    for tid, o in entry.get("overrides", {}).items():
+        tasks[tid]["o"] = o
     outs = [t["o"] for t in tasks.values()]
     scored = sum(o != "error" for o in outs)
     passed = sum(o in ("pass", "repair") for o in outs)

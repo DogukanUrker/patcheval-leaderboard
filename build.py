@@ -112,10 +112,11 @@ def slug(entry):
 
 
 def build(entry):
-    tasks, meta, raw = {}, [], {}
+    tasks, meta, raw, revisions = {}, [], {}, {}
     for run in entry["runs"]:
         row = load(run)
         meta.append(row)
+        revisions[run] = row.get("dataset_revision") or 1
         for t in row["tasks"]:
             prev = tasks.get(t["task_id"])
             if prev is None or prev["o"] == "error":
@@ -130,6 +131,8 @@ def build(entry):
         if tid not in raw or tasks[tid]["o"] == "error":
             continue
         run, t = raw[tid]
+        if revisions[run] >= rescore["revision"]:
+            continue  # graded with the fixed test already
         if run not in rescore["runs"]:
             sys.exit(f"{run}: {tid} has no rescore for revision {rescore['revision']}")
         ws = t.get("workspace") or {}

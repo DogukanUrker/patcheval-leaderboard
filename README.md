@@ -24,8 +24,8 @@ fail-to-pass exit code of every run folder, measured by running the new hidden
 test on that run's saved final patch in the task's validation image. The
 regression result carries over, since that suite never includes the hidden
 test. Only the final patch is saved, so a run that passes after a repair round
-counts as "solved on repair". The build stops if a listed task has no rescore
-for a run.
+counts as "solved on repair". Runs that already record that `dataset_revision`
+are skipped. The build stops if an older run has no rescore for a listed task.
 
 - r2 (2026-10-27): `pygments-2816`. Bonsai-2-27B PTQ1_0 goes from 15 to 16.
 

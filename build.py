@@ -5,16 +5,26 @@ usage: python3 build.py [path/to/BenchKit/results]
 
 Each entry in ENTRIES names the run folder(s) it comes from. Several folders
 are merged task by task: a later run fills in tasks that were missing or hit a
-harness error in an earlier one (split or resumed runs). Prompts, responses
-and traces are never copied into the site, only outcomes and counts.
+harness error in an earlier one (split or resumed runs).
+
+data.js holds only outcomes and counts. Each (model, task) agent trace goes to
+traces/<slug>/<task>.json.gz and is loaded only when someone opens it. The
+hidden grader output (fail-to-pass and regression test logs) is never
+exported, and every trace is checked for hidden test names and private
+strings before it is written.
 """
+import gzip
 import json
+import re
 import sys
+import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 RESULTS = Path(sys.argv[1] if len(sys.argv) > 1 else Path.home() / "repos/BenchKit/results")
 OUT = Path(__file__).parent / "data.js"
+TRACES = Path(__file__).parent / "traces"
+DATASET = Path.home() / "datasets/PatchEval"
 RELEASE = "pilot-20"
 
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
@@ -91,14 +101,19 @@ def load(run):
     return rows[0]
 
 
+def slug(entry):
+    return re.sub(r"[^a-z0-9]+", "-", f'{entry["name"]} {entry["quant"]}'.lower()).strip("-")
+
+
 def build(entry):
-    tasks, meta = {}, []
+    tasks, meta, raw = {}, [], {}
     for run in entry["runs"]:
         row = load(run)
         meta.append(row)
         for t in row["tasks"]:
             prev = tasks.get(t["task_id"])
             if prev is None or prev["o"] == "error":
+                raw[t["task_id"]] = (run, t)
                 tasks[t["task_id"]] = {
                     "o": outcome(t),
                     "calls": t.get("tool_calls") or 0,
@@ -124,12 +139,111 @@ def build(entry):
         "date": entry["runs"][-1][:10],
         "runs": entry["runs"],
         "harness": f'{main.get("harness_label", "Pi agent")} {main.get("harness_version", "")}'.strip(),
+        "slug": slug(entry),
         "tasks": tasks,
+    }, raw
+
+
+# strings that must never reach a public trace
+PRIVATE = re.compile(r"/home/dogi|/mnt/Disk1|\b100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}\b"
+                     r"|hf_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9._-]{16,}")
+
+
+# hidden test names a trace may contain, with the reason it is not a leak
+LEAK_OK = {
+    ("tomlkit-542", "test_replace_dotted_key_with_aot_keeps_following_sibling"):
+        "parent source already has ..._with_table_ and ..._with_empty_table_keeps_following_sibling, "
+        "so agents name their own aot test the same way (and cite the wrong issue number).",
+}
+
+
+def hidden_names():
+    """task id -> hidden test function names, used only to check for leaks.
+
+    Names that already exist in the parent source the agent gets are skipped:
+    reading them from the repo is not a leak.
+    """
+    names = {}
+    for line in (DATASET / "tasks.jsonl").read_text().splitlines():
+        t = json.loads(line)
+        with tarfile.open(DATASET / t["source_archive"]) as tar:
+            src = b"".join(tar.extractfile(m).read() for m in tar.getmembers() if m.isfile() and m.name.endswith(".py"))
+        found = {a.split("::")[-1].split("[")[0] for a in t["fail_to_pass_command"] if "::" in a}
+        names[t["id"]] = {n for n in found
+                          if not re.search(rb"\bdef " + re.escape(n.encode()) + rb"\b", src)
+                          and (t["id"], n) not in LEAK_OK}
+    return names
+
+
+def task_meta():
+    meta = {}
+    for line in (DATASET / "tasks.jsonl").read_text().splitlines():
+        t = json.loads(line)
+        meta[t["id"]] = {"repo": t["repository"], "title": t["issue_title"]}
+    return meta
+
+
+def trace(model, entry, run, t, o):
+    """One public trace. Keeps what the agent saw and did, drops hidden grader output."""
+    tools = t.get("tool_trace") or []
+    attempts = []
+    # runs that were killed (loop, timeout) keep no per-attempt records, only the task's own totals
+    fallback = [{"attempt": 1, **{k: t.get(k) for k in (
+        "response", "thinking", "passed", "done_reason", "response_time_s", "model_turns", "input_tokens", "output_tokens")}}]
+    for a in t.get("attempts") or fallback:
+        n = a.get("attempt", 1)
+        attempts.append({
+            "attempt": n,
+            "passed": bool(a.get("passed")),
+            "feedback": a.get("feedback") or "",
+            "thinking": a.get("thinking") or "",
+            "response": a.get("response") or "",
+            "done_reason": a.get("done_reason") or "",
+            "secs": round(a.get("response_time_s") or 0),
+            "turns": a.get("model_turns") or 0,
+            "input_tokens": a.get("input_tokens") or 0,
+            "output_tokens": a.get("output_tokens") or 0,
+            "tools": [{k: x.get(k) for k in ("name", "arguments", "is_error", "duration_s", "output", "output_truncated")}
+                      for x in tools if x.get("attempt", 1) == n],
+        })
+    ws = t.get("workspace") if isinstance(t.get("workspace"), dict) else {}
+    return {
+        "patcheval": RELEASE,
+        "model": model["name"], "quant": model["quant"], "where": model["where"],
+        "task": t["task_id"], "run": run, "outcome": o,
+        "issue": t.get("prompt") or "",
+        "secs": round(t.get("response_time_s") or 0),
+        "tool_calls": t.get("tool_calls") or 0, "turns": t.get("model_turns") or 0,
+        "loop_killed_at_s": t.get("loop_killed_at_s"),
+        "stop_reason": t.get("error") if o in ("loop", "timeout") else "",
+        "attempts": attempts,
+        "patch": ws.get("patch") or "",
+        "changed_paths": ws.get("changed_paths") or [],
+        "hidden_tests": {"fail_to_pass_exit": ws.get("f2p_exit_code"), "regression_exit": ws.get("regression_exit_code")},
+        "note": entry.get("note", "") if t["task_id"] in entry.get("overrides", {}) else "",
     }
 
 
+def write_traces(built, hidden):
+    problems = []
+    for model, raw, entry in built:
+        d = TRACES / model["slug"]
+        d.mkdir(parents=True, exist_ok=True)
+        for tid, (run, t) in raw.items():
+            body = json.dumps(trace(model, entry, run, t, model["tasks"][tid]["o"]), ensure_ascii=False)
+            for m in set(PRIVATE.findall(body)):
+                problems.append(f"{model['slug']}/{tid}: private string {m[:24]!r}")
+            for name in hidden.get(tid, ()):
+                if re.search(r"\b" + re.escape(name) + r"\b", body):
+                    problems.append(f"{model['slug']}/{tid}: hidden test name {name!r}")
+            # mtime=0 keeps the bytes stable, so unchanged traces don't show up in git
+            (d / f"{tid}.json.gz").write_bytes(gzip.compress(body.encode(), 9, mtime=0))
+    return problems
+
+
 def main():
-    models = [build(e) for e in ENTRIES]
+    built = [(*build(e), e) for e in ENTRIES]
+    models = [m for m, _, _ in built]
     order = list(dict.fromkeys(tid for m in models for tid in m["tasks"]))
     for m in models:
         if len(m["tasks"]) != 20:
@@ -138,8 +252,13 @@ def main():
         "release": RELEASE,
         "built": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "task_order": order,
+        "task_meta": task_meta(),
         "models": models,
     }
+    problems = write_traces(built, hidden_names())
+    if problems:
+        print("\n".join(problems), file=sys.stderr)
+        sys.exit(f"{len(problems)} trace problems, nothing published. fix or allowlist them first.")
     OUT.write_text("window.PATCHEVAL = " + json.dumps(payload, separators=(",", ":")) + ";\n")
     print(f"wrote {OUT} ({len(models)} models, {len(order)} tasks)")
     for m in models:

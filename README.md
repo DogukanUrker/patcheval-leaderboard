@@ -4,7 +4,9 @@ Static site for [PatchEval](https://huggingface.co/datasets/DogukanUrker/PatchEv
 
 - `index.html`: the page (leaderboard, per-task matrix, method, run instructions)
 - `data.js`: generated data, loaded by the page
-- `build.py`: makes `data.js` from BenchKit `results/` folders
+- `trace.js`: the trace viewer (click any task cell, or open `#t/<slug>/<task>`)
+- `traces/<slug>/<task>.json.gz`: one public agent trace per model and task, loaded on demand
+- `build.py`: makes `data.js` and `traces/` from BenchKit `results/` folders
 
 ## Add a model
 
@@ -12,4 +14,15 @@ Static site for [PatchEval](https://huggingface.co/datasets/DogukanUrker/PatchEv
 2. `python3 build.py` (defaults to `~/repos/BenchKit/results`).
 3. Check the printed scores, then deploy.
 
-Several run folders in one entry are merged task by task, so a resumed or split run counts once. Only outcomes and counts go into `data.js`. Prompts, responses and traces never do.
+Several run folders in one entry are merged task by task, so a resumed or split run counts once. Only outcomes and counts go into `data.js`.
+
+## Traces
+
+Each trace keeps what the agent saw and did: the issue, every tool call with its output, the reasoning, the repair prompt, the final patch, and the hidden test exit codes. It never keeps the hidden grader output (the fail-to-pass and regression logs), so the hidden tests stay hidden.
+
+Before anything is written, `build.py` checks every trace for:
+
+- hidden test names from `tasks.jsonl`. A name that already exists in the parent source is fine, and known false hits go in `LEAK_OK` with the reason.
+- private strings: hub paths, tailnet IPs, API tokens.
+
+Any hit stops the build. `vercel.json` and `robots.txt` keep `traces/` out of search results.

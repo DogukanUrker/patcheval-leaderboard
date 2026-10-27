@@ -353,7 +353,7 @@
       <div class="card"><h3>An agent, not a chat</h3><p>The model works inside the Pi agent: it reads files, runs commands and edits code. No internet, no git history, no hidden tests, no gold patch in the sandbox.</p></div>
       <div class="card"><h3>Hidden tests decide</h3><p>A fix counts only if the hidden fail-to-pass test passes and the existing suite stays green. A failed first try gets one repair attempt with generic feedback only.</p></div>
       <div class="card"><h3>Checked 4 ways</h3><p>Before freezing, each task was proven: the test fails before the fix, passes after it, and nothing else breaks either way.</p></div>
-      <div class="card"><h3>Frozen and checksummed</h3><p>The release never changes. Scores from August and scores from today are on the exact same 20 tasks.</p></div>
+      <div class="card"><h3>Frozen and checksummed</h3><p>The 20 tasks never change. If a hidden test turns out to be unfair, it gets fixed in a numbered revision, and every past run is regraded on the patch it actually wrote. Scores from August and scores from today stay comparable.</p></div>
     </div>
   </section>
 

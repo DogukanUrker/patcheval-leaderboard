@@ -26,6 +26,12 @@ OUT = Path(__file__).parent / "data.js"
 TRACES = Path(__file__).parent / "traces"
 DATASET = Path.home() / "datasets/PatchEval"
 RELEASE = "pilot-20"
+REVISION = 2
+# Tasks whose hidden test changed in a later revision. Each past run is
+# regraded by running the new hidden test on that run's saved final patch:
+# run folder -> new fail-to-pass exit code. Regression results carry over,
+# since the regression suite never includes the hidden test.
+RESCORES = json.loads((Path(__file__).parent / "rescores.json").read_text())
 
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
@@ -120,6 +126,17 @@ def build(entry):
                     "turns": t.get("model_turns") or 0,
                     "secs": round(t.get("response_time_s") or 0),
                 }
+    for tid, rescore in RESCORES.items():
+        if tid not in raw or tasks[tid]["o"] == "error":
+            continue
+        run, t = raw[tid]
+        if run not in rescore["runs"]:
+            sys.exit(f"{run}: {tid} has no rescore for revision {rescore['revision']}")
+        ws = t.get("workspace") or {}
+        if rescore["runs"][run] == 0 and ws.get("regression_exit_code") == 0:
+            # only the final patch is saved, so a pass after a repair round
+            # can't be credited as first try
+            tasks[tid]["o"] = "repair" if t.get("repair_attempts_used") else "pass"
     for tid, o in entry.get("overrides", {}).items():
         tasks[tid]["o"] = o
     outs = [t["o"] for t in tasks.values()]
@@ -207,7 +224,7 @@ def trace(model, entry, run, t, o):
                       for x in tools if x.get("attempt", 1) == n],
         })
     ws = t.get("workspace") if isinstance(t.get("workspace"), dict) else {}
-    return {
+    out = {
         "patcheval": RELEASE,
         "model": model["name"], "quant": model["quant"], "where": model["where"],
         "task": t["task_id"], "run": run, "outcome": o,
@@ -222,6 +239,11 @@ def trace(model, entry, run, t, o):
         "hidden_tests": {"fail_to_pass_exit": ws.get("f2p_exit_code"), "regression_exit": ws.get("regression_exit_code")},
         "note": entry.get("note", "") if t["task_id"] in entry.get("overrides", {}) else "",
     }
+    rescore = RESCORES.get(t["task_id"])
+    if rescore and run in rescore["runs"]:
+        out["hidden_tests"]["fail_to_pass_exit"] = rescore["runs"][run]
+        out["note"] = " ".join(x for x in (out["note"], rescore["note"]) if x)
+    return out
 
 
 def write_traces(built, hidden):
@@ -249,7 +271,7 @@ def main():
         if len(m["tasks"]) != 20:
             print(f"warning: {m['name']} {m['quant']} covers {len(m['tasks'])} tasks", file=sys.stderr)
     payload = {
-        "release": RELEASE,
+        "release": f"{RELEASE} r{REVISION}",
         "built": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "task_order": order,
         "task_meta": task_meta(),

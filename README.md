@@ -16,6 +16,19 @@ Static site for [PatchEval](https://huggingface.co/datasets/DogukanUrker/PatchEv
 
 Several run folders in one entry are merged task by task, so a resumed or split run counts once. Only outcomes and counts go into `data.js`.
 
+## Dataset revisions
+
+When a hidden test is fixed in a new PatchEval revision, past runs are regraded
+instead of rerun. `rescores.json` maps each changed task to the new
+fail-to-pass exit code of every run folder, measured by running the new hidden
+test on that run's saved final patch in the task's validation image. The
+regression result carries over, since that suite never includes the hidden
+test. Only the final patch is saved, so a run that passes after a repair round
+counts as "solved on repair". The build stops if a listed task has no rescore
+for a run.
+
+- r2 (2026-10-27): `pygments-2816`. Bonsai-2-27B PTQ1_0 goes from 15 to 16.
+
 ## Traces
 
 Each trace keeps what the agent saw and did: the issue, every tool call with its output, the reasoning, the repair prompt, the final patch, and the hidden test exit codes. It never keeps the hidden grader output (the fail-to-pass and regression logs), so the hidden tests stay hidden.

@@ -155,6 +155,9 @@ def build(entry):
         "errors": len(outs) - scored,
         "tok_s": round(main.get("tok_s") or 0, 1) or None,
         "hours": round(sum(m.get("total_time") or 0 for m in meta) / 3600, 1),
+        # agent time: summed time of the counted tasks. ties on the board are broken by it.
+        # unlike run wall time it does not double count re-run tasks or shrink with parallel tasks.
+        "agent_s": sum(t["secs"] for t in tasks.values()),
         "tool_calls": sum(t["calls"] for t in tasks.values()),
         "date": entry["runs"][-1][:10],
         "runs": entry["runs"],

@@ -337,7 +337,7 @@
     <span><i class="cell timeout"></i>timed out</span>
     <span><i class="cell error"></i>harness error (not scored)</span>
   </div>
-  <p class="caveat">20 tasks means one task is 5 points. Read close scores as "on these 20 tasks", not as one model being better at coding in general. Click a row for per-task results.</p>
+  <p class="caveat">20 tasks means one task is 5 points. Equal scores are ranked by agent time, the faster run first. Read close scores as "on these 20 tasks", not as one model being better at coding in general. Click a row for per-task results.</p>
 
   <section id="tasks">
     <h2>Every task, every model</h2>
@@ -405,6 +405,7 @@ const OUT = { pass: "solved first try", repair: "solved on repair", fail: "faile
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const rate = m => m.passed / m.scored;
+const hrs = s => `${(s / 3600).toFixed(1)} h`;
 const models = D.models.map((m, i) => ({ ...m, id: i }));
 
 // theme toggle, remembered per browser
@@ -430,11 +431,12 @@ $("#foot").textContent = `PatchEval ${D.release} · data from BenchKit runs · u
 const COLS = [
   { k: "rank", label: "#", cls: "" },
   { k: "model", label: "Model", sort: m => m.name.toLowerCase() + m.quant.toLowerCase(), cls: "" },
-  { k: "score", label: "Solved", sort: m => rate(m) * 1000 + m.first / m.scored - m.loops / 100, cls: "", dir: -1 },
+  { k: "score", label: "Solved", sort: m => rate(m) * 1e9 - m.agent_s, cls: "", dir: -1 },
   { k: "first", label: "First try", sort: m => m.first / m.scored, cls: "num hide-sm", dir: -1 },
   { k: "loops", label: "Loops", sort: m => m.loops / m.scored, cls: "num hide-sm", dir: 1 },
   { k: "gb", label: "Size", sort: m => m.gb ?? Infinity, cls: "num hide-sm", dir: 1 },
   { k: "tok_s", label: "Tok/s", sort: m => m.tok_s ?? -1, cls: "num hide-sm", dir: -1 },
+  { k: "agent", label: "Time", sort: m => m.agent_s, cls: "num hide-sm", dir: 1 },
 ];
 let sortKey = "score", sortDir = -1, filter = "all", query = "", open = new Set();
 
@@ -469,7 +471,8 @@ function detail(m) {
     m.gb ? ["File size", `${m.gb} GB`] : null,
     m.tok_s ? ["Speed", m.where === "api" ? `${m.tok_s} tok/s (api stream, measured over the network)` : `${m.tok_s} tok/s`] : null,
     ["Tool calls", m.tool_calls.toLocaleString()],
-    ["Wall time", `${m.hours} h`],
+    ["Agent time", `${hrs(m.agent_s)} (sum of the 20 tasks, breaks ties)`],
+    ["Run wall time", `${m.hours} h`],
     ["Harness", m.harness],
     ["Run", `<span class="mono">${m.runs.map(esc).join(" + ")}</span>`],
   ].filter(Boolean);
@@ -483,7 +486,8 @@ function render() {
   head();
   const col = COLS.find(c => c.k === sortKey);
   // rank follows solved rate only, independent of the current sort. equal scores share a rank.
-  const rankOf = new Map(models.map(m => [m.id, 1 + models.filter(o => rate(o) > rate(m)).length]));
+  // rank: solved rate, then shorter agent time. independent of the current sort.
+  const rankOf = new Map([...models].sort((a, b) => rate(b) - rate(a) || a.agent_s - b.agent_s).map((m, i) => [m.id, i + 1]));
   let list = models.filter(m => (filter === "all" || m.where === filter) &&
     (!query || (m.name + " " + m.quant).toLowerCase().includes(query)));
   list.sort((a, b) => {
@@ -504,6 +508,7 @@ function render() {
       <td class="num hide-sm">${m.loops ? `<span class="loops">${m.loops}</span>` : `<span class="zero">0</span>`}</td>
       <td class="num hide-sm">${m.gb ? m.gb + " GB" : `<span class="zero">${m.where === "api" ? "API" : "—"}</span>`}</td>
       <td class="num hide-sm">${m.tok_s ?? `<span class="zero">—</span>`}</td>
+      <td class="num hide-sm">${hrs(m.agent_s)}</td>
     </tr>${open.has(m.id) ? detail(m) : ""}`;
   }).join("") || `<tr><td colspan="${COLS.length}" style="color:var(--muted);text-align:center;padding:28px">No models match.</td></tr>`;
   $("#body").querySelectorAll("tr.row").forEach(tr => tr.onclick = () => {

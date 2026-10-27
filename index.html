@@ -337,7 +337,7 @@
     <span><i class="cell timeout"></i>timed out</span>
     <span><i class="cell error"></i>harness error (not scored)</span>
   </div>
-  <p class="caveat">20 tasks means one task is 5 points. Ranked by tasks solved on the first try, then tasks solved after the repair attempt, then agent time, the faster run first. Read close scores as "on these 20 tasks", not as one model being better at coding in general. Click a row for per-task results.</p>
+  <p class="caveat">20 tasks means one task is 5 points. Ranked by tasks solved. On equal scores, more first-try solves ranks higher, then the faster run by agent time. Read close scores as "on these 20 tasks", not as one model being better at coding in general. Click a row for per-task results.</p>
 
   <section id="tasks">
     <h2>Every task, every model</h2>
@@ -406,8 +406,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const rate = m => m.passed / m.scored;
 const hrs = s => `${(s / 3600).toFixed(1)} h`;
-// board order: solved on the first try, then solved after the repair attempt, then shorter agent time
-const byRank = (a, b) => b.first / b.scored - a.first / a.scored || rate(b) - rate(a) || a.agent_s - b.agent_s;
+// board order: final score, then how many of those were solved on the first try, then shorter agent time
+const byRank = (a, b) => rate(b) - rate(a) || b.first / b.scored - a.first / a.scored || a.agent_s - b.agent_s;
 const models = D.models.map((m, i) => ({ ...m, id: i }));
 const rankOf = new Map([...models].sort(byRank).map((m, i) => [m.id, i + 1]));
 

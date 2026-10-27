@@ -337,7 +337,7 @@
     <span><i class="cell timeout"></i>timed out</span>
     <span><i class="cell error"></i>harness error (not scored)</span>
   </div>
-  <p class="caveat">20 tasks means one task is 5 points. Equal scores are ranked by agent time, the faster run first. Read close scores as "on these 20 tasks", not as one model being better at coding in general. Click a row for per-task results.</p>
+  <p class="caveat">20 tasks means one task is 5 points. Ranked by tasks solved on the first try, then tasks solved after the repair attempt, then agent time, the faster run first. Read close scores as "on these 20 tasks", not as one model being better at coding in general. Click a row for per-task results.</p>
 
   <section id="tasks">
     <h2>Every task, every model</h2>
@@ -406,7 +406,10 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const rate = m => m.passed / m.scored;
 const hrs = s => `${(s / 3600).toFixed(1)} h`;
+// board order: solved on the first try, then solved after the repair attempt, then shorter agent time
+const byRank = (a, b) => b.first / b.scored - a.first / a.scored || rate(b) - rate(a) || a.agent_s - b.agent_s;
 const models = D.models.map((m, i) => ({ ...m, id: i }));
+const rankOf = new Map([...models].sort(byRank).map((m, i) => [m.id, i + 1]));
 
 // theme toggle, remembered per browser
 const root = document.documentElement;
@@ -429,16 +432,16 @@ $("#foot").textContent = `PatchEval ${D.release} · data from BenchKit runs · u
 
 // columns: key, label, sort fn, classes
 const COLS = [
-  { k: "rank", label: "#", cls: "" },
+  { k: "rank", label: "#", sort: m => -rankOf.get(m.id), cls: "", dir: -1 },
   { k: "model", label: "Model", sort: m => m.name.toLowerCase() + m.quant.toLowerCase(), cls: "" },
-  { k: "score", label: "Solved", sort: m => rate(m) * 1e9 - m.agent_s, cls: "", dir: -1 },
-  { k: "first", label: "First try", sort: m => m.first / m.scored, cls: "num hide-sm", dir: -1 },
+  { k: "score", label: "Solved", sort: m => rate(m) * 1e9 + m.first / m.scored * 1e6 - m.agent_s, cls: "", dir: -1 },
+  { k: "first", label: "First try", sort: m => -rankOf.get(m.id), cls: "num hide-sm", dir: -1 },
   { k: "loops", label: "Loops", sort: m => m.loops / m.scored, cls: "num hide-sm", dir: 1 },
   { k: "gb", label: "Size", sort: m => m.gb ?? Infinity, cls: "num hide-sm", dir: 1 },
   { k: "tok_s", label: "Tok/s", sort: m => m.tok_s ?? -1, cls: "num hide-sm", dir: -1 },
   { k: "agent", label: "Time", sort: m => m.agent_s, cls: "num hide-sm", dir: 1 },
 ];
-let sortKey = "score", sortDir = -1, filter = "all", query = "", open = new Set();
+let sortKey = "rank", sortDir = -1, filter = "all", query = "", open = new Set();
 
 function head() {
   $("#head").innerHTML = COLS.map(c => {
@@ -486,8 +489,7 @@ function render() {
   head();
   const col = COLS.find(c => c.k === sortKey);
   // rank follows solved rate only, independent of the current sort. equal scores share a rank.
-  // rank: solved rate, then shorter agent time. independent of the current sort.
-  const rankOf = new Map([...models].sort((a, b) => rate(b) - rate(a) || a.agent_s - b.agent_s).map((m, i) => [m.id, i + 1]));
+  // rank is fixed by byRank, independent of the current sort
   let list = models.filter(m => (filter === "all" || m.where === filter) &&
     (!query || (m.name + " " + m.quant).toLowerCase().includes(query)));
   list.sort((a, b) => {
@@ -529,7 +531,7 @@ $("#q").oninput = e => { query = e.target.value.trim().toLowerCase(); render(); 
 function matrix() {
   const solved = t => models.filter(m => ["pass", "repair"].includes(m.tasks[t]?.o)).length;
   const tasks = [...D.task_order].sort((a, b) => solved(b) - solved(a));
-  const rows = [...models].sort((a, b) => COLS[2].sort(b) - COLS[2].sort(a));
+  const rows = [...models].sort(byRank);
   const el = $("#matrix");
   el.style.gridTemplateColumns = `minmax(150px, 230px) repeat(${tasks.length}, minmax(22px, 1fr))`;
   let h = `<div></div>` + tasks.map(t => `<div class="mh">${esc(t)}</div>`).join("");

@@ -36,6 +36,9 @@ RESCORES = json.loads((Path(__file__).parent / "rescores.json").read_text())
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
 ENTRIES = [
+    dict(name="Sage-A1.5-35B-A3B", quant="Q4_K_M", where="local", gb=21.71, color="red",
+         runs=["2026-10-27_11-06-32", "2026-10-28_04-57-13"],
+         note="InternScience agentic finetune of Qwen3.6-35B-A3B. sampling from its model card (temp 1.0, presence penalty 1.5). run split in two: tasks 1-15, then a slice for 16-20 on PatchEval r2."),
     dict(name="Raon-1-mini", quant="IQ4_XS (preview)", where="local", gb=16.1, color="rose",
          runs=["2026-10-25_15-43-15", "2026-10-25_23-46-52"],
          note="KRAFTON Raon-1 mini preview (30B-A4B) on KRAFTON's llama.cpp fork. run split in two: tasks 1-6, then a slice for 7-20."),

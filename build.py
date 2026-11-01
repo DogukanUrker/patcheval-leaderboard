@@ -36,6 +36,9 @@ RESCORES = json.loads((Path(__file__).parent / "rescores.json").read_text())
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
 ENTRIES = [
+    dict(name="Mirai-S-27B", quant="Mirai S trellis (~2.4-bit)", where="local", gb=10.96, color="khaki",
+         runs=["2026-11-01_05-12-34"],
+         note="Mirai Labs' Qwen3.8-27B in their trellis codec, alesha-pro's GGUF with the MTP block requantized to Q4_0 by the repo's tool (10.96 GB). served with Cary Palmer's mirai-s-ada runtime and his agent layer in front (API cards, API check, sandboxed Python), his launcher defaults ported to Linux."),
     dict(name="Sage-A1.5-35B-A3B", quant="Q4_K_M", where="local", gb=21.71, color="red",
          runs=["2026-10-27_11-06-32", "2026-10-28_04-57-13"],
          note="InternScience agentic finetune of Qwen3.6-35B-A3B. sampling from its model card (temp 1.0, presence penalty 1.5). run split in two: tasks 1-15, then a slice for 16-20 on PatchEval r2."),

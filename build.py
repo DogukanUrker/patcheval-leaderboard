@@ -36,6 +36,9 @@ RESCORES = json.loads((Path(__file__).parent / "rescores.json").read_text())
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
 ENTRIES = [
+    dict(name="SenseNova-Loop-9B-Preview", quant="Q6_K", where="local", gb=7.37, color="steel",
+         runs=["2026-11-02_12-28-51"],
+         note="SenseNova's looped 9B (layers 4-27 run twice, two-stream mHC). AtomicChat's Q6_K GGUF, header rewritten to the sensenova_loop layout, on llama.cpp 5047748f11 (AtomicChat's base) + GuideboardLabs' sensenova_loop patches + CUDA mHC kernels. full 262K context, q4_0 KV, fully on GPU."),
     dict(name="Mirai-S-27B", quant="Mirai S trellis (~2.4-bit)", where="local", gb=10.96, color="khaki",
          runs=["2026-11-01_05-12-34"],
          note="Mirai Labs' Qwen3.8-27B in their trellis codec, alesha-pro's GGUF with the MTP block requantized to Q4_0 by the repo's tool (10.96 GB). served with Cary Palmer's mirai-s-ada runtime and his agent layer in front (API cards, API check, sandboxed Python), his launcher defaults ported to Linux."),

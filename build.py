@@ -36,6 +36,9 @@ RESCORES = json.loads((Path(__file__).parent / "rescores.json").read_text())
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
 ENTRIES = [
+    dict(name="Inkling-2-Mini", quant="UD-IQ2_XXS", where="local", gb=8.49, color="maroon",
+         runs=["2026-11-23_07-45-16"],
+         note="Thinking Machines' looped 26B MoE (the middle 12 of its 24 layers run three times, 128 experts with 8 active). unsloth's UD-IQ2_XXS GGUF (Mainline_Support layout) on llama.cpp master 29b52d3 + PR #32704, fully on GPU. full 262K context, q4_0 KV, -ub 16. this llama.cpp build has no flash attention for the architecture, so it gets slower as the context fills: 3 tasks hit the time limit, and the run took 16h21m."),
     dict(name="SenseNova-Loop-9B-Preview", quant="Q6_K", where="local", gb=7.37, color="steel",
          runs=["2026-11-02_12-28-51"],
          note="SenseNova's looped 9B (layers 4-27 run twice, two-stream mHC). AtomicChat's Q6_K GGUF, header rewritten to the sensenova_loop layout, on llama.cpp 5047748f11 (AtomicChat's base) + GuideboardLabs' sensenova_loop patches + CUDA mHC kernels. full 262K context, q4_0 KV, fully on GPU."),

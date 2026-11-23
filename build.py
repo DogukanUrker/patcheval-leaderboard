@@ -36,6 +36,9 @@ RESCORES = json.loads((Path(__file__).parent / "rescores.json").read_text())
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
 ENTRIES = [
+    dict(name="Kintsugi-27B", quant="Kintsugi trellis (2.47-bit)", where="local", gb=10.5, color="sky",
+         runs=["2026-11-23_18-56-43"],
+         note="Cary Palmer's Kintsugi-27B: Qwen3.8-27B at 2.47 bits per weight, on his Kintsugi engine (a llama.cpp fork), release v1.1.1 on Linux. his launcher's defaults: agent layer in front, DFlash2 drafter, thinking medium, full 262K context with a tiered K/V cache (83,712 cells in VRAM, the rest in system RAM)."),
     dict(name="Inkling-2-Mini", quant="UD-IQ2_XXS", where="local", gb=8.49, color="maroon",
          runs=["2026-11-23_07-45-16"],
          note="Thinking Machines' looped 26B MoE (the middle 12 of its 24 layers run three times, 128 experts with 8 active). unsloth's UD-IQ2_XXS GGUF (Mainline_Support layout) on llama.cpp master 29b52d3 + PR #32704, fully on GPU. full 262K context, q4_0 KV, -ub 16. this llama.cpp build has no flash attention for the architecture, so it gets slower as the context fills: 3 tasks hit the time limit, and the run took 16h21m."),
@@ -189,6 +192,10 @@ LEAK_OK = {
     ("tomlkit-542", "test_replace_dotted_key_with_aot_keeps_following_sibling"):
         "parent source already has ..._with_table_ and ..._with_empty_table_keeps_following_sibling, "
         "so agents name their own aot test the same way (and cite the wrong issue number).",
+    ("sqlit-246", "test_preserves_semicolons_in_dollar_quoted_strings"):
+        "parent source already has test_preserves_semicolons_in_strings and the issue title says "
+        "'dollar-quoted strings', so an agent that writes its own test lands on the same name. "
+        "Kintsugi-27B did (2026-11-23): its own class, query and asserts, not the hidden test's body.",
 }
 
 

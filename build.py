@@ -36,6 +36,9 @@ RESCORES = json.loads((Path(__file__).parent / "rescores.json").read_text())
 # where: "local" (run on the RTX 3060) or "api" (the model maker's official endpoint)
 # gb: gguf file size, None when unknown. note: shown in the row details.
 ENTRIES = [
+    dict(name="Bonsai-2.5-27B", quant="Ternary PTQ1_0 + MTP", where="local", gb=6.23, color="jade",
+         runs=["2026-11-25_06-23-19"],
+         note="PrismML's Ternary Bonsai 2.5 27B, the agentic upgrade of Bonsai 2 27B. the 6.23 GB PTQ1_0 file includes the MTP draft head. PrismML llama.cpp fork release prism-b12128-d7b2896, MTP drafting on (3 drafts, no cut-off), full 262K context, q4_0 KV. the run took 7h31m."),
     dict(name="Kintsugi-27B", quant="Kintsugi trellis (2.47-bit)", where="local", gb=10.5, color="sky",
          runs=["2026-11-23_18-56-43"],
          note="Cary Palmer's Kintsugi-27B: Qwen3.8-27B at 2.47 bits per weight, on his Kintsugi engine (a llama.cpp fork), release v1.1.1 on Linux. his launcher's defaults: agent layer in front, DFlash2 drafter, thinking medium, full 262K context with a tiered K/V cache (83,712 cells in VRAM, the rest in system RAM)."),
@@ -196,6 +199,10 @@ LEAK_OK = {
         "parent source already has test_preserves_semicolons_in_strings and the issue title says "
         "'dollar-quoted strings', so an agent that writes its own test lands on the same name. "
         "Kintsugi-27B did (2026-11-23): its own class, query and asserts, not the hidden test's body.",
+    ("pypdf-3878", "test_remove_from_tree_on_outline_item"):
+        "the issue is about calling remove_from_tree() on an outline item, so the plain name for a regression "
+        "test is the hidden one. Bonsai-2.5-27B landed on it (2026-11-25): its own 35-line body in "
+        "tests/test_writer.py, nothing shared with the 12-line hidden test in another file. BenchKit verdict: CLEAR.",
 }
 
 
